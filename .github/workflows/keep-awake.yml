@@ -1,0 +1,48 @@
+# Keep Taylor Bank (Render free) awake Mon–Sat 7am–7pm America/Denver.
+# Cron is UTC (covers both MST UTC-7 and MDT UTC-6); the job itself filters by Denver time.
+name: Keep Taylor Bank awake
+
+on:
+  schedule:
+    # Mon–Sat UTC 12:00–23:50 → covers Denver morning/afternoon in both MST and MDT
+    - cron: '*/10 12-23 * * 1-6'
+    # Tue–Sun UTC 00:00–01:50 → covers Denver Mon–Sat evenings that roll into the next UTC day
+    # (Sat 5–7pm MST = Sun 00:00–02:00 UTC; Sat 6–7pm MDT = Sun 00:00–01:00 UTC)
+    - cron: '*/10 0-1 * * 2-6,0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taylor-bank-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /healthz if within bank hours (America/Denver)
+        run: |
+          set -euo pipefail
+          export TZ=America/Denver
+          dow=$(date +%u)   # 1=Mon … 7=Sun
+          hm=$((10#$(date +%H%M)))  # HHMM
+          echo "Denver now: $(date '+%F %T %Z') dow=$dow hm=$hm"
+
+          # Mon–Sat and 06:50–18:59 inclusive (warm by 7:00, last ping ~18:50)
+          if [ "$dow" -lt 1 ] || [ "$dow" -gt 6 ] || [ "$hm" -lt 650 ] || [ "$hm" -gt 1859 ]; then
+            echo "Outside bank hours — skipping ping."
+            exit 0
+          fi
+
+          url='https://taylor-envelopes.onrender.com/healthz'
+          # Cold start on free Render can take 30–60s; allow up to 90s
+          code=$(curl -sS -o /tmp/hz.body -w '%{http_code}' --max-time 90 "$url" || true)
+          body=$(head -c 80 /tmp/hz.body || true)
+          echo "GET $url → HTTP $code body=$body"
+          if [ "$code" != "200" ]; then
+            echo "Health check failed"
+            exit 1
+          fi
