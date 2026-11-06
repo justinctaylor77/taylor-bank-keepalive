@@ -1,0 +1,13 @@
+# Minimal canary: proves whether GitHub schedule events fire on this account/repo.
+name: Schedule canary
+on:
+  schedule:
+    - cron: '9,19,29,39,49,59 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "canary schedule ok at $(date -u -Iseconds) event=$GITHUB_EVENT_NAME"

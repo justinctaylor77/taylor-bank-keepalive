@@ -1,16 +1,14 @@
 # Keep Taylor Bank (Render free) awake Mon–Sat 7am–7pm America/Denver.
-# GitHub Actions `schedule` is best-effort and can drop/delay runs under load;
-# minutes are offset from :00/:10/:20 to reduce drops (GitHub docs).
-# A prior dual-UTC-cron version never produced a single `schedule` run for 3+ hours
-# after create (only workflow_dispatch worked). Re-registering with one timezone
-# cron + disable/enable is the documented recovery path.
+# GitHub Actions `schedule` is best-effort. A timezone-aware cron also produced
+# zero schedule runs on the first expected tick after re-register; this version
+# uses the long-supported UTC cron form (offset minutes) and filters in-job.
 name: Keep Taylor Bank awake
 
 on:
   schedule:
-    # Mon–Sat 06:07–18:57 America/Denver (warm by 7:00, last ping ~18:57)
-    - cron: '7,17,27,37,47,57 6-18 * * 1-6'
-      timezone: America/Denver
+    # Every 10 minutes, offset from :00/:10/:20 (GitHub docs: avoid top-of-hour drops).
+    # In-job America/Denver filter enforces Mon–Sat 06:50–18:59.
+    - cron: '7,17,27,37,47,57 * * * *'
   workflow_dispatch:
 
 permissions:
