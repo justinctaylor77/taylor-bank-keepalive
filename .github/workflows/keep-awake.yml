@@ -1,14 +1,16 @@
 # Keep Taylor Bank (Render free) awake Mon–Sat 7am–7pm America/Denver.
-# Cron is UTC (covers both MST UTC-7 and MDT UTC-6); the job itself filters by Denver time.
+# GitHub Actions `schedule` is best-effort and can drop/delay runs under load;
+# minutes are offset from :00/:10/:20 to reduce drops (GitHub docs).
+# A prior dual-UTC-cron version never produced a single `schedule` run for 3+ hours
+# after create (only workflow_dispatch worked). Re-registering with one timezone
+# cron + disable/enable is the documented recovery path.
 name: Keep Taylor Bank awake
 
 on:
   schedule:
-    # Mon–Sat UTC 12:00–23:50 → covers Denver morning/afternoon in both MST and MDT
-    - cron: '*/10 12-23 * * 1-6'
-    # Tue–Sun UTC 00:00–01:50 → covers Denver Mon–Sat evenings that roll into the next UTC day
-    # (Sat 5–7pm MST = Sun 00:00–02:00 UTC; Sat 6–7pm MDT = Sun 00:00–01:00 UTC)
-    - cron: '*/10 0-1 * * 2-6,0'
+    # Mon–Sat 06:07–18:57 America/Denver (warm by 7:00, last ping ~18:57)
+    - cron: '7,17,27,37,47,57 6-18 * * 1-6'
+      timezone: America/Denver
   workflow_dispatch:
 
 permissions:
@@ -29,9 +31,9 @@ jobs:
           export TZ=America/Denver
           dow=$(date +%u)   # 1=Mon … 7=Sun
           hm=$((10#$(date +%H%M)))  # HHMM
-          echo "Denver now: $(date '+%F %T %Z') dow=$dow hm=$hm"
+          echo "Denver now: $(date '+%F %T %Z') dow=$dow hm=$hm event=${GITHUB_EVENT_NAME:-unknown}"
 
-          # Mon–Sat and 06:50–18:59 inclusive (warm by 7:00, last ping ~18:50)
+          # Mon–Sat and 06:50–18:59 inclusive (warm by 7:00, last ping ~18:57)
           if [ "$dow" -lt 1 ] || [ "$dow" -gt 6 ] || [ "$hm" -lt 650 ] || [ "$hm" -gt 1859 ]; then
             echo "Outside bank hours — skipping ping."
             exit 0
