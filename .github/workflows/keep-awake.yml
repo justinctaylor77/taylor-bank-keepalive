@@ -2,6 +2,7 @@
 # GitHub Actions `schedule` is best-effort. A timezone-aware cron also produced
 # zero schedule runs on the first expected tick after re-register; this version
 # uses the long-supported UTC cron form (offset minutes) and filters in-job.
+# schedule-actor-fix 1793997947
 name: Keep Taylor Bank awake
 
 on:
